@@ -1,58 +1,55 @@
-import re
 import graphene
 from graphene_django import DjangoObjectType
-from django.core.exceptions import ValidationError
-from django.db import transaction
-from django.utils import timezone
+from graphene_django.filter import DjangoFilterConnectionField
 from .models import Customer, Product, Order
+from .filters import CustomerFilter, ProductFilter, OrderFilter
 
 
-# ------------------ Types ------------------
-
+# ------------------ GraphQL Types ------------------
 class CustomerType(DjangoObjectType):
     class Meta:
         model = Customer
-        fields = ("id", "name", "email", "phone")
+        filterset_class = CustomerFilter
+        interfaces = (graphene.relay.Node,)
 
 
 class ProductType(DjangoObjectType):
     class Meta:
         model = Product
-        fields = ("id", "name", "price", "stock")
+        filterset_class = ProductFilter
+        interfaces = (graphene.relay.Node,)
 
 
 class OrderType(DjangoObjectType):
     class Meta:
         model = Order
-        fields = ("id", "customer", "products", "order_date", "total_amount")
+        filterset_class = OrderFilter
+        interfaces = (graphene.relay.Node,)
 
 
-# ------------------ Inputs ------------------
+# ------------------ Queries ------------------
+class Query(graphene.ObjectType):
+    all_customers = DjangoFilterConnectionField(CustomerType, order_by=graphene.List(of_type=graphene.String))
+    all_products = DjangoFilterConnectionField(ProductType, order_by=graphene.List(of_type=graphene.String))
+    all_orders = DjangoFilterConnectionField(OrderType, order_by=graphene.List(of_type=graphene.String))
 
-class CustomerInput(graphene.InputObjectType):
-    name = graphene.String(required=True)
-    email = graphene.String(required=True)
-    phone = graphene.String(required=False)
+    def resolve_all_customers(self, info, **kwargs):
+        qs = Customer.objects.all()
+        order_by = kwargs.get("order_by")
+        if order_by:
+            qs = qs.order_by(*order_by)
+        return qs
 
+    def resolve_all_products(self, info, **kwargs):
+        qs = Product.objects.all()
+        order_by = kwargs.get("order_by")
+        if order_by:
+            qs = qs.order_by(*order_by)
+        return qs
 
-class ProductInput(graphene.InputObjectType):
-    name = graphene.String(required=True)
-    price = graphene.Float(required=True)
-    stock = graphene.Int(required=False, default_value=0)
-
-
-class OrderInput(graphene.InputObjectType):
-    customer_id = graphene.ID(required=True)
-    product_ids = graphene.List(graphene.ID, required=True)
-    order_date = graphene.DateTime(required=False)
-
-
-# ------------------ Mutations ------------------
-
-class CreateCustomer(graphene.Mutation):
-    class Arguments:
-        input = CustomerInput(required=True)
-
-    customer = graphene.Field(CustomerType)
-    message = graphene.String()
-    errors = graphene.List(graphen
+    def resolve_all_orders(self, info, **kwargs):
+        qs = Order.objects.all()
+        order_by = kwargs.get("order_by")
+        if order_by:
+            qs = qs.order_by(*order_by)
+        return qs
