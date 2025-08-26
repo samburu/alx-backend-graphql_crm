@@ -32,3 +32,36 @@ def log_crm_heartbeat():
     except Exception as e:
         with open(logfile, "a") as f:
             f.write(f"{ts} GraphQL check failed: {e}\n")
+
+
+def update_low_stock():
+    transport = RequestsHTTPTransport(
+        url="http://localhost:8000/graphql/",  # Django GraphQL endpoint
+        verify=True,
+        retries=3,
+    )
+
+    client = Client(transport=transport, fetch_schema_from_transport=True)
+
+    mutation = gql("""
+        mutation {
+            updateLowStockProducts {
+                success
+                message
+                updatedProducts {
+                    id
+                    name
+                    stock
+                }
+            }
+        }
+    """)
+
+    result = client.execute(mutation)
+
+    log_path = "/tmp/low_stock_updates_log.txt"
+    with open(log_path, "a") as log_file:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_file.write(f"\n[{timestamp}] {result['updateLowStockProducts']['message']}\n")
+        for product in result['updateLowStockProducts']['updatedProducts']:
+            log_file.write(f"- {product['name']}: {product['stock']}\n")
