@@ -1,8 +1,9 @@
 # crm/tasks.py
-import datetime
+from datetime import datetime
 from celery import shared_task
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
+import requests
 
 
 @shared_task
@@ -35,7 +36,7 @@ def generate_crm_report():
         orders = result.get("totalOrders", 0)
         revenue = result.get("totalRevenue", 0)
 
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_line = f"{timestamp} - Report: {customers} customers, {orders} orders, {revenue} revenue\n"
 
         with open("/tmp/crm_report_log.txt", "a") as f:
